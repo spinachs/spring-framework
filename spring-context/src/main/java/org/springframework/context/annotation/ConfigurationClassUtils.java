@@ -74,6 +74,8 @@ abstract class ConfigurationClassUtils {
 
 
 	/**
+	 * 检查beanDef是否为配置类。
+	 *
 	 * Check whether the given bean definition is a candidate for a configuration class
 	 * (or a nested component class declared within a configuration/component class,
 	 * to be auto-registered as well), and mark it accordingly.
@@ -142,6 +144,8 @@ abstract class ConfigurationClassUtils {
 	}
 
 	/**
+	 * 根据AnnotationMeatdata判断是否为配置类。
+	 *
 	 * Check the given metadata for a configuration class candidate
 	 * (or nested component class declared within a configuration/component class).
 	 * @param metadata the metadata of the annotated class
@@ -149,11 +153,13 @@ abstract class ConfigurationClassUtils {
 	 * configuration class processing; {@code false} otherwise
 	 */
 	public static boolean isConfigurationCandidate(AnnotationMetadata metadata) {
+		//不能为Interface
 		// Do not consider an interface or an annotation...
 		if (metadata.isInterface()) {
 			return false;
 		}
 
+		// 有Component、ComponentScan、Import和ImportResource中任何一个都认为是配置类。
 		// Any of the typical annotations found?
 		for (String indicator : candidateIndicators) {
 			if (metadata.isAnnotated(indicator)) {
@@ -161,6 +167,7 @@ abstract class ConfigurationClassUtils {
 			}
 		}
 
+		//存在Bean注解方法
 		// Finally, let's look for @Bean methods...
 		try {
 			return metadata.hasAnnotatedMethods(Bean.class.getName());

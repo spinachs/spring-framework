@@ -119,6 +119,8 @@ final class AttributeMethods {
 	}
 
 	/**
+	 * 检查canThrowTypeNotPresentException数组中为true的method调用是否出现异常。
+	 *
 	 * Check if values from the given annotation can be safely accessed without causing
 	 * any {@link TypeNotPresentException TypeNotPresentExceptions}. In particular,
 	 * this method is designed to cover Google App Engine's late arrival of such
@@ -143,6 +145,11 @@ final class AttributeMethods {
 		}
 	}
 
+	/**
+	 * 检查annotation class是否匹配。
+	 *
+	 * @param annotation
+	 */
 	private void assertAnnotation(Annotation annotation) {
 		Assert.notNull(annotation, "Annotation must not be null");
 		if (this.annotationType != null) {
@@ -174,6 +181,8 @@ final class AttributeMethods {
 	}
 
 	/**
+	 * 决定访问指定index处属性是否抛出{@link TypeNotPresentException}异常。
+	 *
 	 * Determine if the attribute at the specified index could throw a
 	 * {@link TypeNotPresentException} when accessed.
 	 * @param index the index of the attribute to check

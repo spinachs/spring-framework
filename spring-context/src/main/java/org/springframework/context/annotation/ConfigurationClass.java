@@ -158,6 +158,8 @@ final class ConfigurationClass {
 	}
 
 	/**
+	 * 检查配置类是否被注册。
+	 *
 	 * Return whether this configuration class was registered via @{@link Import} or
 	 * automatically registered due to being nested within another configuration class.
 	 * @since 3.1.1
@@ -168,6 +170,8 @@ final class ConfigurationClass {
 	}
 
 	/**
+	 * 依赖声明合并。
+	 *
 	 * Merge the imported-by declarations from the given configuration class into this one.
 	 * @since 4.0.5
 	 */

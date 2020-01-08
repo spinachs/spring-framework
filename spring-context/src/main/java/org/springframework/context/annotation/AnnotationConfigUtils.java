@@ -234,6 +234,12 @@ public abstract class AnnotationConfigUtils {
 		processCommonDefinitionAnnotations(abd, abd.getMetadata());
 	}
 
+	/**
+	 * 设置{@link Lazy}、{@link Primary}、{@link DependsOn}、{@link Role}和{@link Description}注解信息。
+	 *
+	 * @param abd
+	 * @param metadata
+	 */
 	static void processCommonDefinitionAnnotations(AnnotatedBeanDefinition abd, AnnotatedTypeMetadata metadata) {
 		AnnotationAttributes lazy = attributesFor(metadata, Lazy.class);
 		if (lazy != null) {
@@ -264,6 +270,14 @@ public abstract class AnnotationConfigUtils {
 		}
 	}
 
+	/**
+	 * 设置代理模式。
+	 *
+	 * @param metadata
+	 * @param definition
+	 * @param registry
+	 * @return
+	 */
 	static BeanDefinitionHolder applyScopedProxyMode(
 			ScopeMetadata metadata, BeanDefinitionHolder definition, BeanDefinitionRegistry registry) {
 
