@@ -429,6 +429,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 	/**
 	 * 发布事件。
+	 * 如果调用时候{@link ApplicationEventMulticaster}尚未准备好，存储到earlyApplicationEvents集合中，
+	 * 待multicaster准备好之后统一发布；否则直接发送。
 	 * <p>
 	 * Publish the given event to all listeners.
 	 *
@@ -597,25 +599,31 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				postProcessBeanFactory(beanFactory);
 
 				// Invoke factory processors registered as beans in the context.
-				//扫描basePackage，将bean注册到容器中。
+				//扫描basePackage，完成BeanDefinition的定义、解析、处理、注册。
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
+				// 将BeanFactory中BeanPostProcessor类型实例设置到beanPostProcessors属性值。
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
+				//初始化国际化
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
+				//初始化应用事件组播器
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
+				//空逻辑
 				onRefresh();
 
 				// Check for listener beans and register them.
+				//将ApplicationEventMulticaster对象注册到ApplicationEventMulticaster，并发送预发布事件
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
+				// 实例化bean，调用registerBeanPostProcessors方法中设置的process处理器完成初始化之前和之后的操作。
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
@@ -788,6 +796,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	}
 
 	/**
+	 * 实例化并注册所有{@link org.springframework.beans.factory.config.BeanPostProcessor}，按序调用。
+	 *
 	 * Instantiate and register all BeanPostProcessor beans,
 	 * respecting explicit order if given.
 	 * <p>Must be called before any instantiation of application beans.
@@ -891,6 +901,13 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	}
 
 	/**
+	 * 将{@link ApplicationListener}列表注册到{@link ApplicationEventMulticaster}对象中，
+	 * 最后将earlyApplicationEvents中事件发布出去。
+	 *
+	 * listener包含：
+	 * 1. ApplicationContext对象中设置的
+	 * 2. BeanFactory中注册的ApplicationListener类型对象
+	 *
 	 * Add beans that implement ApplicationListener as listeners.
 	 * Doesn't affect other listeners, which can be added without being beans.
 	 */
@@ -918,6 +935,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	}
 
 	/**
+	 * 初始化所有遗留单例bean，完成BeanFactory初始化。
+	 *
 	 * Finish the initialization of this context's bean factory,
 	 * initializing all remaining singleton beans.
 	 */
@@ -949,6 +968,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.freezeConfiguration();
 
 		// Instantiate all remaining (non-lazy-init) singletons.
+		//初始化所有剩余单例
 		beanFactory.preInstantiateSingletons();
 	}
 

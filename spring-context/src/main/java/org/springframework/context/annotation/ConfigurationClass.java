@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.beans.factory.parsing.Location;
@@ -213,17 +214,28 @@ final class ConfigurationClass {
 		return this.importedResources;
 	}
 
+	/**
+	 * 校验{@link Configuration}注解类，proxyBeanMethods属性默认为true，表示使用代理。
+	 * proxyBeanMethods为true时，该类不能为final，并且类中所有非静态方法都必须可override。
+	 *
+	 * @param problemReporter
+	 */
 	public void validate(ProblemReporter problemReporter) {
 		// A configuration class may not be final (CGLIB limitation) unless it declares proxyBeanMethods=false
 		Map<String, Object> attributes = this.metadata.getAnnotationAttributes(Configuration.class.getName());
-		if (attributes != null && (Boolean) attributes.get("proxyBeanMethods")) {
-			if (this.metadata.isFinal()) {
-				problemReporter.error(new FinalConfigurationProblem());
-			}
-			for (BeanMethod beanMethod : this.beanMethods) {
-				beanMethod.validate(problemReporter);
-			}
+
+		//1. 检查是否有@Configuration注解，并且注解中proxyBeanMethods是否为true
+		if (Objects.isNull(attributes) || !(Boolean) attributes.get("proxyBeanMethods")) {
+			return;
 		}
+
+		//配置类不能为final
+		if (metadata.isFinal()) {
+			problemReporter.error(new FinalConfigurationProblem());
+		}
+
+		//配置类中@Bean方法应当可override
+		beanMethods.forEach(it -> it.validate(problemReporter));
 	}
 
 	@Override
