@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,9 @@ public abstract class ClassUtils {
 
 	/** Prefix for internal non-primitive array class names: {@code "[L"}. */
 	private static final String NON_PRIMITIVE_ARRAY_PREFIX = "[L";
+
+	/** A reusable empty class array constant. */
+	private static final Class<?>[] EMPTY_CLASS_ARRAY = {};
 
 	/** The package separator character: {@code '.'}. */
 	private static final char PACKAGE_SEPARATOR = '.';
@@ -138,7 +141,6 @@ public abstract class ClassUtils {
 		primitiveTypes.addAll(primitiveWrapperTypeMap.values());
 		Collections.addAll(primitiveTypes, boolean[].class, byte[].class, char[].class,
 				double[].class, float[].class, int[].class, long[].class, short[].class);
-		primitiveTypes.add(void.class);
 		for (Class<?> primitiveType : primitiveTypes) {
 			primitiveTypeNameMap.put(primitiveType.getName(), primitiveType);
 		}
@@ -533,7 +535,7 @@ public abstract class ClassUtils {
 	 * @param lhsType the target type
 	 * @param rhsType the value type that should be assigned to the target type
 	 * @return if the target type is assignable from the value type
-	 * @see TypeUtils#isAssignable
+	 * @see TypeUtils#isAssignable(java.lang.reflect.Type, java.lang.reflect.Type)
 	 */
 	public static boolean isAssignable(Class<?> lhsType, Class<?> rhsType) {
 		Assert.notNull(lhsType, "Left-hand side type must not be null");
@@ -543,17 +545,12 @@ public abstract class ClassUtils {
 		}
 		if (lhsType.isPrimitive()) {
 			Class<?> resolvedPrimitive = primitiveWrapperTypeMap.get(rhsType);
-			if (lhsType == resolvedPrimitive) {
-				return true;
-			}
+			return (lhsType == resolvedPrimitive);
 		}
 		else {
 			Class<?> resolvedWrapper = primitiveTypeToWrapperMap.get(rhsType);
-			if (resolvedWrapper != null && lhsType.isAssignableFrom(resolvedWrapper)) {
-				return true;
-			}
+			return (resolvedWrapper != null && lhsType.isAssignableFrom(resolvedWrapper));
 		}
-		return false;
 	}
 
 	/**
@@ -683,8 +680,8 @@ public abstract class ClassUtils {
 	 * @since 3.1
 	 * @see StringUtils#toStringArray
 	 */
-	public static Class<?>[] toClassArray(Collection<Class<?>> collection) {
-		return collection.toArray(new Class<?>[0]);
+	public static Class<?>[] toClassArray(@Nullable Collection<Class<?>> collection) {
+		return (!CollectionUtils.isEmpty(collection) ? collection.toArray(EMPTY_CLASS_ARRAY) : EMPTY_CLASS_ARRAY);
 	}
 
 	/**
@@ -1064,7 +1061,7 @@ public abstract class ClassUtils {
 	 * @param clazz the clazz to analyze
 	 * @param paramTypes the parameter types of the method
 	 * @return whether the class has a corresponding constructor
-	 * @see Class#getMethod
+	 * @see Class#getConstructor
 	 */
 	public static boolean hasConstructor(Class<?> clazz, Class<?>... paramTypes) {
 		return (getConstructorIfAvailable(clazz, paramTypes) != null);
@@ -1088,6 +1085,24 @@ public abstract class ClassUtils {
 		catch (NoSuchMethodException ex) {
 			return null;
 		}
+	}
+
+	/**
+	 * Determine whether the given class has a public method with the given signature.
+	 * @param clazz the clazz to analyze
+	 * @param method the method to look for
+	 * @return whether the class has a corresponding method
+	 * @since 5.2.3
+	 */
+	public static boolean hasMethod(Class<?> clazz, Method method) {
+		Assert.notNull(clazz, "Class must not be null");
+		Assert.notNull(method, "Method must not be null");
+		if (clazz == method.getDeclaringClass()) {
+			return true;
+		}
+		String methodName = method.getName();
+		Class<?>[] paramTypes = method.getParameterTypes();
+		return getMethodOrNull(clazz, methodName, paramTypes) != null;
 	}
 
 	/**
@@ -1160,12 +1175,7 @@ public abstract class ClassUtils {
 		Assert.notNull(clazz, "Class must not be null");
 		Assert.notNull(methodName, "Method name must not be null");
 		if (paramTypes != null) {
-			try {
-				return clazz.getMethod(methodName, paramTypes);
-			}
-			catch (NoSuchMethodException ex) {
-				return null;
-			}
+			return getMethodOrNull(clazz, methodName, paramTypes);
 		}
 		else {
 			Set<Method> candidates = findMethodCandidatesByName(clazz, methodName);
@@ -1362,6 +1372,17 @@ public abstract class ClassUtils {
 		}
 	}
 
+
+	@Nullable
+	private static Method getMethodOrNull(Class<?> clazz, String methodName, Class<?>[] paramTypes) {
+		try {
+			return clazz.getMethod(methodName, paramTypes);
+		}
+		catch (NoSuchMethodException ex) {
+			return null;
+		}
+	}
+
 	private static Set<Method> findMethodCandidatesByName(Class<?> clazz, String methodName) {
 		Set<Method> candidates = new HashSet<>(1);
 		Method[] methods = clazz.getMethods();
@@ -1372,4 +1393,5 @@ public abstract class ClassUtils {
 		}
 		return candidates;
 	}
+
 }

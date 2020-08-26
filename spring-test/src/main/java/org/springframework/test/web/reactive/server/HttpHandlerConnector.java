@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoProcessor;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 import org.springframework.core.io.buffer.DataBuffer;
@@ -83,8 +84,8 @@ public class HttpHandlerConnector implements ClientHttpConnector {
 	private Mono<ClientHttpResponse> doConnect(
 			HttpMethod httpMethod, URI uri, Function<? super ClientHttpRequest, Mono<Void>> requestCallback) {
 
-		MonoProcessor<Void> requestWriteCompletion = MonoProcessor.create();
-		MonoProcessor<Void> handlerCompletion = MonoProcessor.create();
+		MonoProcessor<Void> requestWriteCompletion = MonoProcessor.fromSink(Sinks.one());
+		MonoProcessor<Void> handlerCompletion = MonoProcessor.fromSink(Sinks.one());
 		ClientHttpResponse[] savedResponse = new ClientHttpResponse[1];
 
 		MockClientHttpRequest mockClientRequest = new MockClientHttpRequest(httpMethod, uri);
@@ -135,7 +136,7 @@ public class HttpHandlerConnector implements ClientHttpConnector {
 	}
 
 	private ClientHttpResponse adaptResponse(MockServerHttpResponse response, Flux<DataBuffer> body) {
-		Integer status = response.getStatusCodeValue();
+		Integer status = response.getRawStatusCode();
 		MockClientHttpResponse clientResponse = new MockClientHttpResponse((status != null) ? status : 200);
 		clientResponse.getHeaders().putAll(response.getHeaders());
 		clientResponse.getCookies().putAll(response.getCookies());

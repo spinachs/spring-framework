@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.AbstractBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -38,12 +39,15 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
 import org.springframework.core.PriorityOrdered;
+import org.springframework.core.metrics.ApplicationStartup;
+import org.springframework.core.metrics.StartupStep;
 import org.springframework.lang.Nullable;
 
 /**
  * Delegate for AbstractApplicationContext's post-processor handling.
  *
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 4.0
  */
 final class PostProcessorRegistrationDelegate {
@@ -106,7 +110,7 @@ final class PostProcessorRegistrationDelegate {
 			}
 			sortPostProcessors(currentRegistryProcessors, beanFactory);
 			registryProcessors.addAll(currentRegistryProcessors);
-			invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+			invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry, beanFactory.getApplicationStartup());
 			currentRegistryProcessors.clear();
 
 			// Next, invoke the BeanDefinitionRegistryPostProcessors that implement Ordered.
@@ -119,7 +123,7 @@ final class PostProcessorRegistrationDelegate {
 			}
 			sortPostProcessors(currentRegistryProcessors, beanFactory);
 			registryProcessors.addAll(currentRegistryProcessors);
-			invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+			invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry, beanFactory.getApplicationStartup());
 			currentRegistryProcessors.clear();
 
 			// Finally, invoke all other BeanDefinitionRegistryPostProcessors until no further ones appear.
@@ -136,7 +140,7 @@ final class PostProcessorRegistrationDelegate {
 				}
 				sortPostProcessors(currentRegistryProcessors, beanFactory);
 				registryProcessors.addAll(currentRegistryProcessors);
-				invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+				invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry, beanFactory.getApplicationStartup());
 				currentRegistryProcessors.clear();
 			}
 
@@ -269,6 +273,10 @@ final class PostProcessorRegistrationDelegate {
 	}
 
 	private static void sortPostProcessors(List<?> postProcessors, ConfigurableListableBeanFactory beanFactory) {
+		// Nothing to sort?
+		if (postProcessors.size() <= 1) {
+			return;
+		}
 		Comparator<Object> comparatorToUse = null;
 		if (beanFactory instanceof DefaultListableBeanFactory) {
 			comparatorToUse = ((DefaultListableBeanFactory) beanFactory).getDependencyComparator();
@@ -285,10 +293,13 @@ final class PostProcessorRegistrationDelegate {
 	 * Invoke the given BeanDefinitionRegistryPostProcessor beans.
 	 */
 	private static void invokeBeanDefinitionRegistryPostProcessors(
-			Collection<? extends BeanDefinitionRegistryPostProcessor> postProcessors, BeanDefinitionRegistry registry) {
+			Collection<? extends BeanDefinitionRegistryPostProcessor> postProcessors, BeanDefinitionRegistry registry, ApplicationStartup applicationStartup) {
 
 		for (BeanDefinitionRegistryPostProcessor postProcessor : postProcessors) {
+			StartupStep postProcessBeanDefRegistry = applicationStartup.start("spring.context.beandef-registry.post-process")
+					.tag("postProcessor", postProcessor::toString);
 			postProcessor.postProcessBeanDefinitionRegistry(registry);
+			postProcessBeanDefRegistry.end();
 		}
 	}
 
@@ -299,7 +310,10 @@ final class PostProcessorRegistrationDelegate {
 			Collection<? extends BeanFactoryPostProcessor> postProcessors, ConfigurableListableBeanFactory beanFactory) {
 
 		for (BeanFactoryPostProcessor postProcessor : postProcessors) {
+			StartupStep postProcessBeanFactory = beanFactory.getApplicationStartup().start("spring.context.bean-factory.post-process")
+					.tag("postProcessor", postProcessor::toString);
 			postProcessor.postProcessBeanFactory(beanFactory);
+			postProcessBeanFactory.end();
 		}
 	}
 
@@ -311,8 +325,14 @@ final class PostProcessorRegistrationDelegate {
 	private static void registerBeanPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, List<BeanPostProcessor> postProcessors) {
 
-		for (BeanPostProcessor postProcessor : postProcessors) {
-			beanFactory.addBeanPostProcessor(postProcessor);
+		if (beanFactory instanceof AbstractBeanFactory) {
+			// Bulk addition is more efficient against our CopyOnWriteArrayList there
+			((AbstractBeanFactory) beanFactory).addBeanPostProcessors(postProcessors);
+		}
+		else {
+			for (BeanPostProcessor postProcessor : postProcessors) {
+				beanFactory.addBeanPostProcessor(postProcessor);
+			}
 		}
 	}
 
