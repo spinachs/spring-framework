@@ -577,6 +577,8 @@ public abstract class ClassUtils {
 	}
 
 	/**
+	 * 将包名中.替换为/，表示路径。
+	 *
 	 * Convert a "."-based fully qualified class name to a "/"-based resource path.
 	 * @param className the fully qualified class name
 	 * @return the corresponding resource path, pointing to the class

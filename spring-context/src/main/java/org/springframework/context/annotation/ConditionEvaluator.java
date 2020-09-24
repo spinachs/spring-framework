@@ -72,16 +72,21 @@ class ConditionEvaluator {
 	}
 
 	/**
+	 * 检查{@link Conditional}注解是否需要忽略处理该配置类。
+	 *
 	 * Determine if an item should be skipped based on {@code @Conditional} annotations.
 	 * @param metadata the meta data
 	 * @param phase the phase of the call
 	 * @return if the item should be skipped
 	 */
 	public boolean shouldSkip(@Nullable AnnotatedTypeMetadata metadata, @Nullable ConfigurationPhase phase) {
+		//没有注解，或者注解中没有@Conditional，不处理
 		if (metadata == null || !metadata.isAnnotated(Conditional.class.getName())) {
 			return false;
 		}
 
+		//phase为null时，设置phase重新调用本函数
+		//todo 为何不设置phase，继续执行
 		if (phase == null) {
 			if (metadata instanceof AnnotationMetadata &&
 					ConfigurationClassUtils.isConfigurationCandidate((AnnotationMetadata) metadata)) {
@@ -90,6 +95,7 @@ class ConditionEvaluator {
 			return shouldSkip(metadata, ConfigurationPhase.REGISTER_BEAN);
 		}
 
+		//将类注解中所有condition转换为对象。
 		List<Condition> conditions = new ArrayList<>();
 		for (String[] conditionClasses : getConditionClasses(metadata)) {
 			for (String conditionClass : conditionClasses) {
@@ -98,8 +104,10 @@ class ConditionEvaluator {
 			}
 		}
 
+		//根据Ordered接口实现类设置排序
 		AnnotationAwareOrderComparator.sort(conditions);
 
+		//检查phase和接口方法matches返回值
 		for (Condition condition : conditions) {
 			ConfigurationPhase requiredPhase = null;
 			if (condition instanceof ConfigurationCondition) {
@@ -113,6 +121,12 @@ class ConditionEvaluator {
 		return false;
 	}
 
+	/**
+	 * 获取{@link Conditional}注解中value值。
+	 *
+	 * @param metadata
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	private List<String[]> getConditionClasses(AnnotatedTypeMetadata metadata) {
 		MultiValueMap<String, Object> attributes = metadata.getAllAnnotationAttributes(Conditional.class.getName(), true);
@@ -120,6 +134,13 @@ class ConditionEvaluator {
 		return (List<String[]>) (values != null ? values : Collections.emptyList());
 	}
 
+	/**
+	 * 将{@link Conditional}注解中声明的condition类名生成对象。
+	 *
+	 * @param conditionClassName
+	 * @param classloader
+	 * @return
+	 */
 	private Condition getCondition(String conditionClassName, @Nullable ClassLoader classloader) {
 		Class<?> conditionClass = ClassUtils.resolveClassName(conditionClassName, classloader);
 		return (Condition) BeanUtils.instantiateClass(conditionClass);

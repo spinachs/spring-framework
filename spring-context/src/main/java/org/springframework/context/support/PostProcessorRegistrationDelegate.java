@@ -56,6 +56,19 @@ final class PostProcessorRegistrationDelegate {
 	}
 
 
+	/**
+	 * 调用BeanFactory处理器。
+	 * 1. 调用参数beanFactoryPostProcessors中BeanDefinitionRegistryPostProcessor类型来处理
+	 * 2. 调用BeanFactory中BeanDefinitionRegistryPostProcessor类型且实现PriorityOrdered的类，排序后处理
+	 * 3. 调用BeanFactory中BeanDefinitionRegistryPostProcessor类型且实现Ordered的类，排序后处理（需排除前面已用过的）
+	 * 4. 调用BeanFactory中BeanDefinitionRegistryPostProcessor类型剩余对象处理（需排除前面已用过的）
+	 * 5. 调用BeanFactory中BeanFactoryPostProcessor类型且实现PriorityOrdered的类，排序后处理（需排除前面已用过的）
+	 * 6. 调用BeanFactory中BeanFactoryPostProcessor类型且实现Ordered的类，排序后处理（需排除前面已用过的）
+	 * 7. 调用BeanFactory中BeanFactoryPostProcessor类型剩余对象处理（需排除前面已用过的）
+	 *
+	 * @param beanFactory
+	 * @param beanFactoryPostProcessors
+	 */
 	public static void invokeBeanFactoryPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, List<BeanFactoryPostProcessor> beanFactoryPostProcessors) {
 
@@ -73,8 +86,7 @@ final class PostProcessorRegistrationDelegate {
 							(BeanDefinitionRegistryPostProcessor) postProcessor;
 					registryProcessor.postProcessBeanDefinitionRegistry(registry);
 					registryProcessors.add(registryProcessor);
-				}
-				else {
+				} else {
 					regularPostProcessors.add(postProcessor);
 				}
 			}
@@ -85,6 +97,8 @@ final class PostProcessorRegistrationDelegate {
 			// PriorityOrdered, Ordered, and the rest.
 			List<BeanDefinitionRegistryPostProcessor> currentRegistryProcessors = new ArrayList<>();
 
+			//1. 获取BeanFactory中BeanDefinitionRegistryPostProcessor类型bean名称，然后保留PriorityOrdered子类。
+			//得到ConfigurationClassPostProcessor类
 			// First, invoke the BeanDefinitionRegistryPostProcessors that implement PriorityOrdered.
 			String[] postProcessorNames =
 					beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
@@ -133,9 +147,7 @@ final class PostProcessorRegistrationDelegate {
 			// Now, invoke the postProcessBeanFactory callback of all processors handled so far.
 			invokeBeanFactoryPostProcessors(registryProcessors, beanFactory);
 			invokeBeanFactoryPostProcessors(regularPostProcessors, beanFactory);
-		}
-
-		else {
+		} else {
 			// Invoke factory processors registered with the context instance.
 			invokeBeanFactoryPostProcessors(beanFactoryPostProcessors, beanFactory);
 		}
@@ -153,14 +165,11 @@ final class PostProcessorRegistrationDelegate {
 		for (String ppName : postProcessorNames) {
 			if (processedBeans.contains(ppName)) {
 				// skip - already processed in first phase above
-			}
-			else if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+			} else if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
 				priorityOrderedPostProcessors.add(beanFactory.getBean(ppName, BeanFactoryPostProcessor.class));
-			}
-			else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+			} else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
 				orderedPostProcessorNames.add(ppName);
-			}
-			else {
+			} else {
 				nonOrderedPostProcessorNames.add(ppName);
 			}
 		}
@@ -189,6 +198,13 @@ final class PostProcessorRegistrationDelegate {
 		beanFactory.clearMetadataCache();
 	}
 
+	/**
+	 * BeanFactory中获取BeanPostProcessor类型实例，然后按照PriorityOrdered、Ordered和其他优先级排序注册到BeanFactory中。
+	 * 根据注册原理，将所有{@link MergedBeanDefinitionPostProcessor}类型注册优先级放到最低.
+	 *
+	 * @param beanFactory
+	 * @param applicationContext
+	 */
 	public static void registerBeanPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, AbstractApplicationContext applicationContext) {
 
@@ -213,11 +229,9 @@ final class PostProcessorRegistrationDelegate {
 				if (pp instanceof MergedBeanDefinitionPostProcessor) {
 					internalPostProcessors.add(pp);
 				}
-			}
-			else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+			} else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
 				orderedPostProcessorNames.add(ppName);
-			}
-			else {
+			} else {
 				nonOrderedPostProcessorNames.add(ppName);
 			}
 		}
@@ -274,6 +288,8 @@ final class PostProcessorRegistrationDelegate {
 	}
 
 	/**
+	 * 调用BeanDefinitionRegistryPostProcessor对象。
+	 *
 	 * Invoke the given BeanDefinitionRegistryPostProcessor beans.
 	 */
 	private static void invokeBeanDefinitionRegistryPostProcessors(
@@ -302,6 +318,8 @@ final class PostProcessorRegistrationDelegate {
 	}
 
 	/**
+	 * 注册{@link BeanPostProcessor}实例。
+	 *
 	 * Register the given BeanPostProcessor beans.
 	 */
 	private static void registerBeanPostProcessors(
